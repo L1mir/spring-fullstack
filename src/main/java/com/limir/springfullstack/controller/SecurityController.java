@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/auth")
 public class SecurityController {
+
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
     private AuthenticationManager authenticationManager;
@@ -48,31 +49,36 @@ public class SecurityController {
     }
 
     @PostMapping("/signup")
-    ResponseEntity<?> signup(@RequestBody SignUpRequest signUpRequest) {
-        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Username already exists");
+    ResponseEntity<?> signup(@RequestBody SignUpRequest signupRequest) {
+        if (userRepository.existsByUsername("username")) {
+            return ResponseEntity.badRequest().body("Username is already taken");
         }
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Email already exists");
+        if (userRepository.existsByEmail("email")) {
+            return ResponseEntity.badRequest().body("Email is already taken");
         }
 
         User user = new User();
-        user.setUsername(signUpRequest.getUsername());
-        user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
-        user.setEmail(signUpRequest.getEmail());
-        return ResponseEntity.ok("Success, baby");
+        user.setUsername(signupRequest.getUsername());
+        user.setEmail(signupRequest.getEmail());
+        user.setPassword(passwordEncoder.encode(signupRequest.getPassword()));
+        userRepository.save(user);
+
+        return ResponseEntity.ok("User registered successfully");
     }
 
     @PostMapping("/signin")
-    ResponseEntity<?> signin(@RequestBody SignInRequest signInRequest) {
+    public ResponseEntity<?> signIn(@RequestBody SignInRequest signInRequest) {
         Authentication authentication = null;
         try {
-            authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(signInRequest.getUsername(), signInRequest.getPassword()));
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(signInRequest.getUsername(), signInRequest.getPassword())
+            );
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtCore.generateToken(authentication);
         return ResponseEntity.ok(jwt);
     }
+
 }

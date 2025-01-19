@@ -12,7 +12,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 
 @Component
@@ -24,28 +23,28 @@ public class TokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String jwt = null;
         String username = null;
-        UserDetails userDetails = null;
-        UsernamePasswordAuthenticationToken auth = null;
+        UserDetails userDetails;
+        UsernamePasswordAuthenticationToken authentication;
+
         try {
-            String headerAuth = request.getHeader("Authorization");
-            if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
-                jwt = headerAuth.substring(7);
+            String header = request.getHeader("Authorization");
+            if (header != null && header.startsWith("Bearer ")) {
+                jwt = header.substring(7);
             }
             if (jwt != null) {
                 try {
                     username = jwtCore.getNameFromJwtToken(jwt);
                 } catch (ExpiredJwtException e) {
-                    // TODO
+                    e.printStackTrace();
+                }
+                if (username != null) {
+                    userDetails = userDetailsService.loadUserByUsername(username);
+                    authentication = new UsernamePasswordAuthenticationToken(userDetails, null);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                userDetails = userDetailsService.loadUserByUsername(username);
-                auth = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null);
-            }
         } catch (Exception e) {
-            // TODO
+            e.printStackTrace();
         }
         filterChain.doFilter(request, response);
     }
